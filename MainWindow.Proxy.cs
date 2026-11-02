@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Net;
+using System.Net.Sockets;
 using EveryDns.Models;
 using EveryDns.Services;
 using Microsoft.UI.Xaml;
@@ -15,7 +17,7 @@ public sealed partial class MainWindow
     private readonly ObservableCollection<ProxyRow> rows = new();
     private readonly DispatcherTimer proxyTimer = new() { Interval = TimeSpan.FromSeconds(2) };
 
-    private bool loadingModes, connected, proxyBusy, syncingSelection, ticking, resolvingFlags, speedRunning;
+    private bool killBlocking, loadingModes, connected, proxyBusy, syncingSelection, ticking, resolvingFlags, speedRunning;
     private ProxyServer? connectedServer;
     private long lastCoreDown, lastCoreUp, sessionDown, sessionUp;
     private DateTime lastTickAt;
@@ -33,11 +35,17 @@ public sealed partial class MainWindow
         }
         XrayCore.KillStrays();
 
+        // The firewall is the truth: rules left by a crash count as "on".
+        if (Firewall.IsActive("kill")) { proxy.KillSwitch = true; killBlocking = true; }
+        if (proxy.KillSwitch && proxy.Routing == "iran") proxy.Routing = "global"; // direct routes would be blocked
         VersionText.Text = "v" + typeof(App).Assembly.GetName().Version!.ToString(3);
         loadingModes = true;
         ModeBox.SelectedIndex = proxy.Mode == "local" ? 1 : 0;
         RoutingBox.SelectedIndex = proxy.Routing == "iran" ? 1 : 0;
+        KillSwitchToggle.IsOn = proxy.KillSwitch;
+        RoutingBox.IsEnabled = !proxy.KillSwitch;
         loadingModes = false;
+        if (killBlocking) Notify("The kill switch is blocking the internet. Connect, or turn it off.", bad: true);
 
         ServerList.ItemsSource = rows;
         RebuildRows();
@@ -53,6 +61,8 @@ public sealed partial class MainWindow
     private void ShutdownProxy()
     {
         if (connected) Disconnect();
+        // Closing the app must not leave the internet blocked.
+        if (Firewall.IsActive("kill")) Task.Run(() => DnsChanger.FirewallClearAsync("kill")).GetAwaiter().GetResult();
         proxy.Save();
     }
 
@@ -127,7 +137,27 @@ public sealed partial class MainWindow
     private async void Power_Click(object sender, RoutedEventArgs e)
     {
         if (proxyBusy) return;
-        if (connected) Disconnect(); else await ConnectAsync();
+        if (connected) await DisconnectManualAsync(); else await ConnectAsync();
+    }
+
+    /// <summary>The user pressed disconnect: stop, and take the kill switch away too (it would otherwise block the internet for good).</summary>
+    private async Task DisconnectManualAsync()
+    {
+        Disconnect();
+        if (!await Task.Run(() => Firewall.IsActive("kill"))) return;
+        var result = await DnsChanger.FirewallClearAsync("kill");
+        killBlocking = !result.Ok;
+        if (!result.Ok) Notify("The kill switch is still blocking the internet: " + result.Message, bad: true);
+        RenderProxy();
+    }
+
+    /// <summary>Allows only the server (all its addresses) and the DNS servers in use, so the core can still find the server by name.</summary>
+    private async Task<ChangeResult> ApplyKillSwitchAsync(ProxyServer server)
+    {
+        IPAddress[] addresses;
+        try { addresses = IPAddress.TryParse(server.Address, out var literal) ? new[] { literal } : await Dns.GetHostAddressesAsync(server.Address); }
+        catch (SocketException) { return new ChangeResult(false, "Could not find the server's address, so the kill switch was not turned on."); }
+        return await DnsChanger.FirewallApplyAsync("kill", addresses.Concat(adapters.SelectMany(a => a.Dns)).Distinct());
     }
 
     private async Task ConnectAsync()
@@ -149,6 +179,13 @@ public sealed partial class MainWindow
             }
 
             await core.StartAsync(ProxyLink.BuildConfig(row.Server.Raw, bypassIran: proxy.Routing == "iran", logFile: XrayCore.LogPath));
+            if (proxy.KillSwitch)
+            {
+                // Blocks everything except this server. If it cannot be turned on (for example the permission prompt was refused), do not connect unprotected.
+                var kill = await ApplyKillSwitchAsync(row.Server);
+                if (!kill.Ok) throw new InvalidOperationException(kill.Message);
+                killBlocking = false;
+            }
             lastCoreDown = lastCoreUp = 0; // a new core counts from zero
             lastTickAt = DateTime.UtcNow;
 
@@ -165,6 +202,7 @@ public sealed partial class MainWindow
         catch (Exception ex)
         {
             core.Stop();
+            if (connected) Disconnect(lost: proxy.KillSwitch);
             Log.Write("Connect failed", ex);
             Notify(ex is HttpRequestException ? "Could not download the proxy core. Check your connection." : ex.Message, bad: true);
         }
@@ -176,8 +214,10 @@ public sealed partial class MainWindow
         }
     }
 
-    private void Disconnect()
+    /// <param name="lost">The connection dropped by itself: leave the kill switch rules in place so nothing leaks.</param>
+    private void Disconnect(bool lost = false)
     {
+        killBlocking = lost && proxy.KillSwitch;
         connected = false;
         connectedServer = null;
         core.Stop();
@@ -204,6 +244,9 @@ public sealed partial class MainWindow
         ProxySub.Text = connected && proxy.Mode != "system" ? $"SOCKS 127.0.0.1:{ProxyLink.SocksPort}  ·  HTTP 127.0.0.1:{ProxyLink.HttpPort}"
             : shown != null ? shown.Name : "Pick a server and press the button";
         RestartButton.IsEnabled = connected;
+        KillText.Text = killBlocking ? "Blocking the internet: connection lost"
+            : !proxy.KillSwitch ? "Blocks the internet if the proxy drops"
+            : connected ? "On: only the proxy server can be reached" : "On: starts when you connect";
         HeroFlag.Visibility = shown?.Server.Country.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (shown != null) HeroFlag.Fill = shown.Flag;
         if (tab == "services") ServicesVia.Text = connected ? "Testing through your proxy" : "Testing through your normal connection";
@@ -225,8 +268,8 @@ public sealed partial class MainWindow
         {
             if (!core.IsRunning)
             {
-                Disconnect();
-                Notify("The proxy core stopped, so EveryDns disconnected.", bad: true);
+                Disconnect(lost: true);
+                Notify(proxy.KillSwitch ? "The proxy stopped. The kill switch is blocking the internet. Press the power button to reconnect." : "The proxy core stopped, so EveryDns disconnected.", bad: true);
                 return;
             }
 

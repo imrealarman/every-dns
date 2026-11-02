@@ -181,3 +181,79 @@ public class DnsTests
     public void Preset_matches_the_servers_in_use() =>
         Assert.True(DnsPresets.Builtin[0].Matches(new[] { IPAddress.Parse("1.0.0.1"), IPAddress.Parse("1.1.1.1") }));
 }
+
+public class FirewallTests
+{
+    private static bool Inside(IPAddress ip, string ranges)
+    {
+        var bytes = ip.GetAddressBytes();
+        foreach (string range in ranges.Split(','))
+        {
+            var parts = range.Split('-');
+            var lo = IPAddress.Parse(parts[0]).GetAddressBytes();
+            var hi = IPAddress.Parse(parts[^1]).GetAddressBytes();
+            if (lo.Length == bytes.Length && bytes.AsSpan().SequenceCompareTo(lo) >= 0 && bytes.AsSpan().SequenceCompareTo(hi) <= 0) return true;
+        }
+        return false;
+    }
+
+    [Theory]
+    [InlineData("203.0.113.7", false)]   // the proxy server: must stay reachable
+    [InlineData("1.1.1.1", true)]        // the internet: blocked
+    [InlineData("8.8.8.8", true)]
+    [InlineData("127.0.0.1", false)]     // this PC
+    [InlineData("192.168.1.1", false)]   // the router
+    [InlineData("10.150.17.223", false)]
+    [InlineData("169.254.10.10", false)]
+    [InlineData("224.0.0.251", false)]   // multicast (mDNS)
+    [InlineData("255.255.255.255", false)] // DHCP broadcast
+    [InlineData("203.0.113.6", true)]    // the neighbours of the server are blocked
+    [InlineData("203.0.113.8", true)]
+    [InlineData("2606:4700:4700::1111", true)]
+    [InlineData("::1", false)]
+    [InlineData("fe80::1", false)]
+    [InlineData("2001:db8::5", false)]   // the proxy server over IPv6
+    [InlineData("2001:db8::4", true)]
+    public void Kill_switch_blocks_exactly_what_it_should(string address, bool blocked)
+    {
+        string ranges = Firewall.BlockedRanges(new[] { IPAddress.Parse("203.0.113.7"), IPAddress.Parse("2001:db8::5") });
+        Assert.Equal(blocked, Inside(IPAddress.Parse(address), ranges));
+    }
+
+    [Fact]
+    public void Blocked_ranges_never_overlap_or_leave_gaps()
+    {
+        var allowed = new[] { "10.0.0.0/8", "127.0.0.0/8", "224.0.0.0/3" }.Select(Firewall.Cidr).Concat(new[] { (IPAddress.Parse("8.8.8.8"), IPAddress.Parse("8.8.8.8")) });
+        var blocked = Firewall.Complement(System.Net.Sockets.AddressFamily.InterNetwork, allowed);
+        // 2^32 addresses = allowed + blocked
+        System.Numerics.BigInteger Count(IPAddress a, IPAddress b) => new System.Numerics.BigInteger(b.GetAddressBytes(), true, true) - new System.Numerics.BigInteger(a.GetAddressBytes(), true, true) + 1;
+        var total = blocked.Aggregate(System.Numerics.BigInteger.Zero, (s, r) => s + Count(r.From, r.To)) + allowed.Aggregate(System.Numerics.BigInteger.Zero, (s, r) => s + Count(r.Item1, r.Item2));
+        Assert.Equal(System.Numerics.BigInteger.One << 32, total);
+    }
+
+    [Fact]
+    public void Commands_are_short_enough_for_netsh_and_have_the_right_shape()
+    {
+        var hosts = Enumerable.Range(1, 10).Select(i => IPAddress.Parse($"203.0.113.{i * 10}")).Append(IPAddress.Parse("2001:db8::5")).ToList();
+        var kill = Firewall.RuleCommands("kill", hosts);
+        var dns = Firewall.RuleCommands("dns", hosts);
+        Assert.Single(kill);
+        Assert.Equal(2, dns.Count);
+        Assert.All(kill.Concat(dns), c => { Assert.True(c.Length < 7500, "netsh limit"); Assert.Contains("action=block", c); Assert.Contains("dir=out", c); });
+        Assert.Contains("remoteport=53,853", dns[0]);
+        Assert.Contains("protocol=udp", dns[0]);
+        Assert.Contains("protocol=tcp", dns[1]);
+    }
+
+    [Theory]
+    [InlineData("1.1.1.1,8.8.8.8", true)]
+    [InlineData("1.1.1.1;calc", false)]
+    [InlineData("0.0.0.0", false)]
+    [InlineData("fe80::1%12", false)]
+    [InlineData("1.1.1.1/24", false)]
+    public void Only_plain_addresses_are_accepted_by_the_elevated_side(string csv, bool ok) => Assert.Equal(ok, Firewall.TryParseHosts(csv, out _));
+
+    [Fact]
+    public void The_elevated_side_accepts_the_firewall_commands() =>
+        Assert.All(new[] { "--fw-apply", "--fw-clear", "--apply", "--reset" }, a => Assert.True(DnsChanger.IsCliRequest(new[] { a })));
+}

@@ -19,6 +19,8 @@ public sealed class AppSettings
 {
     public string Theme { get; set; } = "system";
     public string? AdapterId { get; set; }
+    /// <summary>Block DNS to every server except the ones in use.</summary>
+    public bool DnsGuard { get; set; }
     public List<SavedServer> Custom { get; set; } = new();
     public Dictionary<string, DnsSnapshot> Undo { get; set; } = new();
 

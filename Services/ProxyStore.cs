@@ -19,6 +19,8 @@ public sealed class ProxyStore
     public string Mode { get; set; } = "system";
     /// <summary>"global": everything through the server. "iran": Iranian sites go direct.</summary>
     public string Routing { get; set; } = "global";
+    /// <summary>Block all traffic except to the proxy server while connected, so nothing leaks if the proxy drops.</summary>
+    public bool KillSwitch { get; set; }
     /// <summary>Set while EveryDns has turned the Windows proxy on, so a crash can be cleaned up on the next start.</summary>
     public ProxyBackup? Backup { get; set; }
     /// <summary>Bytes carried through the proxy over all sessions.</summary>

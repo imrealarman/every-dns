@@ -102,6 +102,14 @@
                                 <ComboBoxItem Content="Bypass Iran sites" Tag="iran" />
                             </ComboBox>
                         </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Kill switch" FontSize="13" />
+                                <TextBlock x:Name="KillText" Text="Blocks the internet if the proxy drops" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" x:Name="KillSwitchToggle" OnContent="" OffContent="" MinWidth="0" Toggled="KillSwitch_Toggled" />
+                        </Grid>
                     </StackPanel>
                 </Border>
 
@@ -237,6 +245,15 @@
                         <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Stretch" Content="Reset to automatic" Click="Reset_Click" />
                     </Grid>
                     <Button x:Name="UndoButton" Style="{StaticResource GhostButton}" HorizontalAlignment="Center" MinHeight="26" Content="Undo last change" Click="Undo_Click" Visibility="Collapsed" />
+
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="DNS kill switch" FontSize="13" />
+                            <TextBlock x:Name="GuardText" Text="Blocks DNS to any server except the ones in use" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" x:Name="DnsGuardToggle" OnContent="" OffContent="" MinWidth="0" Toggled="DnsGuard_Toggled" />
+                    </Grid>
 
                     <Grid Margin="0,6,0,0" ColumnSpacing="6">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

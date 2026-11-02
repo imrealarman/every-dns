@@ -26,6 +26,40 @@ public sealed partial class MainWindow
         if (connected && !proxyBusy) await ConnectAsync(); // apply the new mode to the running connection
     }
 
+    private async void KillSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (loadingModes) return;
+        bool on = KillSwitchToggle.IsOn;
+        proxy.KillSwitch = on;
+        RoutingBox.IsEnabled = !on;
+        if (on && proxy.Routing == "iran")
+        {
+            // A direct route would be blocked by the kill switch, so everything goes through the server.
+            proxy.Routing = "global";
+            loadingModes = true; RoutingBox.SelectedIndex = 0; loadingModes = false;
+            Notify("Bypass Iran sites is off while the kill switch is on.");
+        }
+        proxy.Save();
+
+        if (on)
+        {
+            if (connected && !proxyBusy) await ConnectAsync(); // connecting applies the rules
+        }
+        else if (await Task.Run(() => Firewall.IsActive("kill")))
+        {
+            var result = await DnsChanger.FirewallClearAsync("kill");
+            if (!result.Ok)
+            {
+                // Still blocking: show that honestly instead of a switch that says off.
+                proxy.KillSwitch = true; proxy.Save();
+                loadingModes = true; KillSwitchToggle.IsOn = true; RoutingBox.IsEnabled = false; loadingModes = false;
+                Notify(result.Message, bad: true);
+            }
+            else { killBlocking = false; Notify("Kill switch is off."); }
+        }
+        RenderProxy();
+    }
+
     private async void RestartCore_Click(object sender, RoutedEventArgs e)
     {
         if (!connected || proxyBusy) return;

@@ -16,10 +16,10 @@ public sealed record ChangeResult(bool Ok, string Message);
 /// </summary>
 public static class DnsChanger
 {
-    private const int ExitOk = 0, ExitBadArgs = 2, ExitNoAdapter = 3, ExitNetshFailed = 4;
+    private const int ExitOk = 0, ExitBadArgs = 2, ExitNoAdapter = 3, ExitNetshFailed = 4, ExitFirewallFailed = 5;
     private const int ErrorCancelled = 1223; // the user said no to the UAC prompt
 
-    public static bool IsCliRequest(string[] args) => args.Length > 0 && args[0] is "--apply" or "--reset";
+    public static bool IsCliRequest(string[] args) => args.Length > 0 && args[0] is "--apply" or "--reset" or "--fw-apply" or "--fw-clear";
 
     // ---- called by the window ----------------------------------------------------------------------------------
 
@@ -27,6 +27,12 @@ public static class DnsChanger
         RunAsync(new[] { "--apply", adapterId, string.Join(",", servers.Select(s => s.ToString())) });
 
     public static Task<ChangeResult> ResetAsync(string adapterId) => RunAsync(new[] { "--reset", adapterId });
+
+    /// <summary>Turns a firewall protection ("kill" = kill switch, "dns" = DNS guard) on, allowing only these addresses through.</summary>
+    public static Task<ChangeResult> FirewallApplyAsync(string kind, IEnumerable<IPAddress> allowed) =>
+        RunAsync(new[] { "--fw-apply", kind, string.Join(",", allowed.Select(a => a.ToString())) });
+
+    public static Task<ChangeResult> FirewallClearAsync(string kind) => RunAsync(new[] { "--fw-clear", kind });
 
     public static async Task<ChangeResult> FlushAsync()
     {
@@ -69,6 +75,7 @@ public static class DnsChanger
     {
         ExitOk => new ChangeResult(true, "DNS updated."),
         ExitNoAdapter => new ChangeResult(false, "That adapter is no longer connected."),
+        ExitFirewallFailed => new ChangeResult(false, $"Windows Firewall refused the rules (see {Log.FilePath})."),
         ExitBadArgs => new ChangeResult(false, "Those DNS addresses are not valid."),
         _ => new ChangeResult(false, $"Windows refused the change (see {Log.FilePath})."),
     };
@@ -87,6 +94,18 @@ public static class DnsChanger
         try
         {
             if (args.Length < 2) return ExitBadArgs;
+            if (args[0] == "--fw-clear")
+            {
+                if (args[1] is not ("kill" or "dns")) return ExitBadArgs;
+                Firewall.Clear(args[1]);
+                return ExitOk;
+            }
+            if (args[0] == "--fw-apply")
+            {
+                if (args.Length < 3 || args[1] is not ("kill" or "dns") || !Firewall.TryParseHosts(args[2], out var allowed) || allowed.Count == 0) return ExitBadArgs;
+                return Firewall.Apply(args[1], allowed) == 0 ? ExitOk : ExitFirewallFailed;
+            }
+
             var adapter = NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n => string.Equals(n.Id, args[1], StringComparison.OrdinalIgnoreCase));
             if (adapter == null) return ExitNoAdapter;
             if (adapter.Name.Contains('"')) return ExitBadArgs;
@@ -95,6 +114,8 @@ public static class DnsChanger
             {
                 int auto4 = Netsh(adapter.Name, "ip", Array.Empty<IPAddress>());
                 Netsh(adapter.Name, "ipv6", Array.Empty<IPAddress>()); // an adapter without IPv6 has nothing to reset
+                // The new automatic DNS is not known yet, so a DNS guard that listed the old servers would block it: switch the guard off.
+                if (Firewall.IsActive("dns")) Firewall.Clear("dns");
                 return auto4 == 0 ? Flush() : ExitNetshFailed;
             }
 
@@ -113,6 +134,8 @@ public static class DnsChanger
             int done6 = Netsh(adapter.Name, "ipv6", v6);
             // Only an IPv6 server that was asked for must succeed; "back to automatic" is best effort.
             bool ok = done4 == 0 && (done6 == 0 || v6.Count == 0);
+            // A DNS guard keeps working with the new servers; without this the change would be blocked by the guard itself.
+            if (ok && Firewall.IsActive("dns")) Firewall.Apply("dns", servers);
             return ok ? Flush() : ExitNetshFailed;
         }
         catch (Exception ex)
@@ -142,7 +165,7 @@ public static class DnsChanger
 
     private static int Flush() => Exec("ipconfig.exe", "/flushdns").Code == 0 ? ExitOk : ExitNetshFailed;
 
-    private static (int Code, string Output) Exec(string file, string arguments)
+    internal static (int Code, string Output) Exec(string file, string arguments)
     {
         var start = new ProcessStartInfo(file, arguments)
         {

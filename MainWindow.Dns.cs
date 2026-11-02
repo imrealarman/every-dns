@@ -33,6 +33,7 @@ public sealed partial class MainWindow
         PresetList.ItemsSource = presetRows;
         BuildPresetRows();
         LoadAdapters();
+        _ = RefreshGuardAsync(announceCleared: false);
 
         // Windows raises this several times for one change; wait for it to settle.
         networkChanged.Tick += (_, _) => { networkChanged.Stop(); LoadAdapters(); };
@@ -257,7 +258,7 @@ public sealed partial class MainWindow
                 settings.Save();
             }
             Notify(result.Ok ? success : result.Message, bad: !result.Ok);
-            if (result.Ok) { await Task.Delay(400); LoadAdapters(); }
+            if (result.Ok) { await Task.Delay(400); LoadAdapters(); await RefreshGuardAsync(announceCleared: true); }
         }
         finally { dnsBusy = false; }
     }

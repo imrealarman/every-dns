@@ -2,7 +2,7 @@
 ; Expects the self-contained publish output in ..\publish (see build-installer.ps1).
 
 #define AppName "EveryDns"
-#define AppVersion "1.0.0"
+#define AppVersion "1.1.0"
 #define AppExe "EveryDns.exe"
 
 [Setup]
@@ -49,5 +49,10 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{a
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+; Best effort: removes the kill switch and DNS guard firewall rules (only works when the uninstaller has administrator rights).
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""EveryDns Kill Switch"""; Flags: runhidden; RunOnceId: "KillSwitchRules"
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""EveryDns DNS Guard"""; Flags: runhidden; RunOnceId: "DnsGuardRules"
 
 ; Settings and the log (%AppData%\EveryDns) are deliberately left in place on uninstall.

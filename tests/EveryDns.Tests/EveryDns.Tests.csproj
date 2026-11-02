@@ -18,6 +18,8 @@
     <Compile Include="..\..\Services\SystemProxy.cs" Link="Src\SystemProxy.cs" />
     <Compile Include="..\..\Services\Log.cs" Link="Src\Log.cs" />
     <Compile Include="..\..\Services\QrTools.cs" Link="Src\QrTools.cs" />
+    <Compile Include="..\..\Services\Firewall.cs" Link="Src\Firewall.cs" />
+    <Compile Include="..\..\Services\DnsChanger.cs" Link="Src\DnsChanger.cs" />
   </ItemGroup>
 
   <ItemGroup>

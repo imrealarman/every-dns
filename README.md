@@ -16,6 +16,7 @@ Built with WinUI 3 (Windows App SDK) on .NET 8. The window is a small card with 
 - **Country flags**: each server shows a round flag for the country its IP address is in.
 - **Modes**: *System proxy* turns the Windows proxy on while connected (and puts your old setting back); *Local port only* just opens SOCKS `127.0.0.1:10808` and HTTP `127.0.0.1:10809` for apps you point at it yourself.
 - **Routing**: *Everything* goes through the server; *Bypass Iran sites* sends `.ir` names and Iranian IP ranges direct. Local network addresses always go direct.
+- **Kill switch**: while connected, Windows Firewall blocks every address except the proxy server (and your local network and DNS servers), so nothing leaks if the proxy drops. If the connection is lost the block stays until you reconnect or turn it off. Turning it off, pressing disconnect, or closing the app removes the rules. It needs administrator permission (a prompt) when it is turned on and off, and it switches *Bypass Iran sites* off, since direct routes would be blocked too.
 - **Import and export**: from a file or the clipboard, to a file or the clipboard. **QR codes**: show any server as a QR code, or import QR codes straight from the screen.
 - **Logs**: the proxy core's log for the current connection and the app's own log, in one window.
 - **Core**: Xray-core ships inside the app. The version is shown, **Restart core** restarts it, and the core button checks the Xray-core GitHub releases and updates it (the download is checked against its published SHA-256 first). An updated core is kept in `%AppData%\EveryDns\core` and wins over the bundled one.
@@ -26,6 +27,7 @@ Built with WinUI 3 (Windows App SDK) on .NET 8. The window is a small card with 
 - **Live status**: router, internet, DNS ping and lookup time, a small latency graph, average, jitter and loss. It says plainly when the internet works but the DNS does not.
 - **Clear DNS cache** with one click (no admin rights needed).
 - **Change DNS** to Cloudflare, Google, Quad9, OpenDNS, AdGuard, family-safe resolvers and Iranian resolvers (Shecan, Electro, 403.online, Radar), or your own. **Test all** times every provider and marks the fastest. **Reset to automatic** hands DNS back to your router; **Undo** restores what was there before the last change.
+- **DNS kill switch** (DNS guard): blocks DNS (port 53 and DNS over TLS) to every server except the ones in use, so queries cannot leak to your ISP's resolver. Changing DNS through EveryDns keeps the guard working with the new servers; resetting to automatic switches it off.
 - Changing DNS asks Windows for permission (UAC) only at that moment; the app itself runs as a normal user.
 
 ## Services
@@ -60,6 +62,7 @@ Tests: `dotnet test tests\EveryDns.Tests` (link parsing, DNS packets, QR round t
 
 ## Limits
 
+- The kill switch and DNS guard are Windows Firewall rules added by EveryDns (they do not change any firewall default). If the internet stays blocked after a crash, open EveryDns and turn the switch off, or run as administrator: `netsh advfirewall firewall delete rule name="EveryDns Kill Switch"` (and `"EveryDns DNS Guard"` for the guard). Running EveryDns as administrator avoids the permission prompts.
 - No TUN (whole-system VPN) mode yet; apps that ignore the Windows proxy need the local port set by hand.
 - Hysteria and TUIC are not supported (Xray-core does not run them).
 - Some networks block ping (ICMP); the DNS tab then shows "no reply" for ping while lookups still work.
