@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <RootNamespace>EveryDns.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The logic is plain .NET, so the tests compile the real source files instead of referencing the WinUI app. -->
+    <Compile Include="..\..\Services\ProxyLink.cs" Link="Src\ProxyLink.cs" />
+    <Compile Include="..\..\Services\DnsClient.cs" Link="Src\DnsClient.cs" />
+    <Compile Include="..\..\Services\DnsPresets.cs" Link="Src\DnsPresets.cs" />
+    <Compile Include="..\..\Services\ProxyStore.cs" Link="Src\ProxyStore.cs" />
+    <Compile Include="..\..\Services\SystemProxy.cs" Link="Src\SystemProxy.cs" />
+    <Compile Include="..\..\Services\Log.cs" Link="Src\Log.cs" />
+    <Compile Include="..\..\Services\QrTools.cs" Link="Src\QrTools.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="ZXing.Net" Version="0.16.9" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+  </ItemGroup>
+
+</Project>

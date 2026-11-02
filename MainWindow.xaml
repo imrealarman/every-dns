@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="EveryDns.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:m="using:EveryDns.Models">
+
+    <Grid x:Name="Root" Background="{ThemeResource ChromeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title bar: the caption buttons are drawn over the right edge -->
+        <Grid x:Name="TitleBar" Background="{ThemeResource ChromeBrush}" ColumnSpacing="8" Padding="12,0,140,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Image x:Name="TitleIcon" Width="16" Height="16" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="EveryDns" />
+                <TextBlock x:Name="VersionText" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button Grid.Column="2" x:Name="ThemeButton" Style="{StaticResource GhostButton}" MinHeight="28" Padding="8,0" Click="Theme_Click" ToolTipService.ToolTip="Theme">
+                <FontIcon Glyph="&#xE793;" FontSize="13" />
+            </Button>
+        </Grid>
+
+        <!-- Tabs -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Padding="16,4,16,10">
+            <Button x:Name="TabProxy" Content="Proxy" Style="{StaticResource ChipButtonOn}" Click="Tab_Click" Tag="proxy" />
+            <Button x:Name="TabDns" Content="DNS" Style="{StaticResource ChipButton}" Click="Tab_Click" Tag="dns" />
+            <Button x:Name="TabServices" Content="Services" Style="{StaticResource ChipButton}" Click="Tab_Click" Tag="services" />
+            <Button x:Name="TabLookup" Content="Lookup" Style="{StaticResource ChipButton}" Click="Tab_Click" Tag="lookup" />
+        </StackPanel>
+
+        <Grid Grid.Row="2">
+            <!-- ================= PROXY ================= -->
+            <Grid x:Name="PageProxy" Padding="16,0,16,0" RowSpacing="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border Background="{ThemeResource TileBrush}" BorderBrush="{ThemeResource BorderBrush1}" BorderThickness="1" CornerRadius="12" Padding="16,18">
+                    <StackPanel Spacing="12" HorizontalAlignment="Stretch">
+                        <Button x:Name="PowerButton" Style="{StaticResource BaseButton}" Width="76" Height="76" CornerRadius="38" Padding="0"
+                                HorizontalAlignment="Center" BorderThickness="2" Click="Power_Click">
+                            <FontIcon x:Name="PowerIcon" Glyph="&#xE7E8;" FontSize="28" />
+                        </Button>
+                        <StackPanel Spacing="2" HorizontalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                <Ellipse x:Name="HeroFlag" Width="20" Height="20" Visibility="Collapsed" VerticalAlignment="Center" />
+                                <TextBlock x:Name="ProxyStatus" Text="Not connected" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock x:Name="ProxySub" Text="Pick a server and press the button" Style="{StaticResource MutedText}" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="DOWNLOAD" Style="{StaticResource PanelHeader}" HorizontalAlignment="Center" />
+                                <TextBlock x:Name="DownText" Text="–" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                <TextBlock Text="UPLOAD" Style="{StaticResource PanelHeader}" HorizontalAlignment="Center" />
+                                <TextBlock x:Name="UpText" Text="–" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                <TextBlock Text="DELAY" Style="{StaticResource PanelHeader}" HorizontalAlignment="Center" />
+                                <TextBlock x:Name="DelayText" Text="–" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
+                        <Rectangle Height="1" Fill="{ThemeResource BorderBrush1}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock x:Name="UsedText" Text="Data used  ↓ 0 B   ↑ 0 B" FontSize="12" />
+                                <TextBlock x:Name="TotalText" Style="{StaticResource MutedText}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button x:Name="RestartButton" Style="{StaticResource GhostButton}" MinHeight="26" Padding="8,0" Content="Restart core" Click="RestartCore_Click" IsEnabled="False" ToolTipService.ToolTip="Stop the core and start it again" />
+                                <Button x:Name="CoreButton" Style="{StaticResource GhostButton}" MinHeight="26" Padding="8,0" Content="Core …" Click="Core_Click" ToolTipService.ToolTip="Check for a newer Xray core" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <ComboBox x:Name="ModeBox" Header="Mode" HorizontalAlignment="Stretch" SelectionChanged="Mode_SelectionChanged">
+                                <ComboBoxItem Content="System proxy" Tag="system" />
+                                <ComboBoxItem Content="Local port only" Tag="local" />
+                            </ComboBox>
+                            <ComboBox x:Name="RoutingBox" Grid.Column="1" Header="Route" HorizontalAlignment="Stretch" SelectionChanged="Mode_SelectionChanged">
+                                <ComboBoxItem Content="Everything" Tag="global" />
+                                <ComboBoxItem Content="Bypass Iran sites" Tag="iran" />
+                            </ComboBox>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="1" ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="ServersHeader" Text="SERVERS" Style="{StaticResource PanelHeader}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource GhostButton}" MinHeight="28" Padding="8,0" Content="Ping all" Click="PingAll_Click" />
+                    <Button Grid.Column="2" Style="{StaticResource GhostButton}" MinHeight="28" Padding="8,0" Content="Speed test" Click="Speed_Click" />
+                    <Button Grid.Column="3" Style="{StaticResource GhostButton}" MinHeight="28" Padding="8,0" Click="UpdateSubs_Click" ToolTipService.ToolTip="Update subscriptions">
+                        <FontIcon Glyph="&#xE72C;" FontSize="13" />
+                    </Button>
+                    <Button Grid.Column="4" Style="{StaticResource SecondaryButton}" MinHeight="28" Padding="12,0" Content="Add" Click="AddServers_Click" />
+                    <Button Grid.Column="5" Style="{StaticResource GhostButton}" MinHeight="28" Width="30" Padding="0" ToolTipService.ToolTip="More">
+                        <FontIcon Glyph="&#xE712;" FontSize="14" />
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="Import from file…" Click="ImportFile_Click" />
+                                <MenuFlyoutItem Text="Import QR code from screen" Click="ImportQr_Click" />
+                                <MenuFlyoutItem Text="Import from clipboard" Click="ImportClipboard_Click" />
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Text="Export to file…" Click="ExportFile_Click" />
+                                <MenuFlyoutItem Text="Copy all links" Click="CopyLinks_Click" />
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Text="Show logs" Click="Logs_Click" />
+                                <MenuFlyoutItem Text="About" Click="About_Click" />
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Text="Remove all servers" Click="ClearServers_Click" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+
+                <Grid Grid.Row="2">
+                    <ListView x:Name="ServerList" SelectionMode="Single" ItemContainerStyle="{StaticResource BareListViewItem}" SelectionChanged="ServerList_SelectionChanged">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="m:ProxyRow">
+                                <Grid Height="52" Padding="12,0,8,0" ColumnSpacing="8" Margin="0,0,0,4" CornerRadius="8"
+                                      Background="{ThemeResource TileBrush}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse Width="26" Height="26" Fill="{x:Bind Flag, Mode=OneWay}" Stroke="{ThemeResource BorderBrush2}" StrokeThickness="1" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Name}" FontSize="13" TextTrimming="CharacterEllipsis" TextReadingOrder="DetectFromContent" />
+                                        <TextBlock Text="{x:Bind Detail}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{x:Bind Ping, Mode=OneWay}" Foreground="{x:Bind PingBrush, Mode=OneWay}" FontSize="12" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Style="{StaticResource GhostButton}" MinHeight="28" Padding="6,0" Content="QR" Tag="{x:Bind}" Click="ShowQr_Click" ToolTipService.ToolTip="Show QR code" />
+                                        <Button Style="{StaticResource GhostButton}" MinHeight="28" Width="28" Padding="0" Tag="{x:Bind}" Click="RemoveServer_Click" ToolTipService.ToolTip="Remove">
+                                            <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" />
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <StackPanel x:Name="NoServers" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
+                        <TextBlock Text="No servers yet" FontSize="14" HorizontalAlignment="Center" />
+                        <TextBlock Text="Add vless://, vmess://, trojan://, ss:// links or a subscription address." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="280" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- ================= DNS ================= -->
+            <ScrollViewer x:Name="PageDns" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="16,0,16,12" Spacing="10">
+                    <Border x:Name="Verdict" Background="{ThemeResource TileBrush}" BorderBrush="{ThemeResource BorderBrush1}" BorderThickness="1" CornerRadius="12" Padding="14,12">
+                        <StackPanel Spacing="10">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Ellipse x:Name="VerdictDot" Width="10" Height="10" Fill="{ThemeResource TextMutedBrush}" VerticalAlignment="Center" />
+                                <StackPanel>
+                                    <TextBlock x:Name="VerdictTitle" Text="Checking…" FontSize="14" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="VerdictSub" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </StackPanel>
+                            <Grid ColumnSpacing="6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Text="ROUTER" Style="{StaticResource PanelHeader}" /><TextBlock x:Name="GwValue" Text="–" FontSize="14" FontWeight="SemiBold" /></StackPanel>
+                                <StackPanel Grid.Column="1"><TextBlock Text="INTERNET" Style="{StaticResource PanelHeader}" /><TextBlock x:Name="NetValue" Text="–" FontSize="14" FontWeight="SemiBold" /></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="DNS PING" Style="{StaticResource PanelHeader}" /><TextBlock x:Name="DnsValue" Text="–" FontSize="14" FontWeight="SemiBold" /></StackPanel>
+                                <StackPanel Grid.Column="3"><TextBlock Text="LOOKUP" Style="{StaticResource PanelHeader}" /><TextBlock x:Name="LkValue" Text="–" FontSize="14" FontWeight="SemiBold" /></StackPanel>
+                            </Grid>
+                            <Canvas x:Name="Graph" Height="44" SizeChanged="Graph_SizeChanged">
+                                <Polyline x:Name="NetLine" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.6" StrokeLineJoin="Round" />
+                                <Polyline x:Name="LkLine" Stroke="#3DBE7A" StrokeThickness="1.6" StrokeLineJoin="Round" />
+                            </Canvas>
+                            <TextBlock x:Name="StatsText" Style="{StaticResource MutedText}" />
+                        </StackPanel>
+                    </Border>
+
+                    <ComboBox x:Name="AdapterBox" HorizontalAlignment="Stretch" SelectionChanged="AdapterBox_SelectionChanged">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:AdapterRef"><TextBlock Text="{x:Bind Display}" /></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock x:Name="AdapterDetails" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
+
+                    <Grid>
+                        <TextBlock x:Name="CurrentHeader" Text="DNS IN USE" Style="{StaticResource PanelHeader}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="ModeBadge" HorizontalAlignment="Right" Style="{StaticResource MutedText}" />
+                    </Grid>
+                    <ItemsControl x:Name="CurrentList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="m:ServerRow">
+                                <Grid Height="34" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Address}" FontSize="13" />
+                                        <TextBlock Text="{x:Bind Label}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Result, Mode=OneWay}" Foreground="{x:Bind ResultBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Stretch" Content="Clear DNS cache" Click="Flush_Click" />
+                        <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Stretch" Content="Reset to automatic" Click="Reset_Click" />
+                    </Grid>
+                    <Button x:Name="UndoButton" Style="{StaticResource GhostButton}" HorizontalAlignment="Center" MinHeight="26" Content="Undo last change" Click="Undo_Click" Visibility="Collapsed" />
+
+                    <Grid Margin="0,6,0,0" ColumnSpacing="6">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="CHANGE DNS" Style="{StaticResource PanelHeader}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Style="{StaticResource GhostButton}" MinHeight="28" Padding="8,0" Content="Test all" Click="TestAll_Click" />
+                        <Button Grid.Column="2" Style="{StaticResource GhostButton}" MinHeight="28" Padding="8,0" Content="Custom…" Click="Custom_Click" />
+                    </Grid>
+                    <ItemsControl x:Name="PresetList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="m:PresetRow">
+                                <Grid Height="56" Padding="12,0,8,0" ColumnSpacing="8" Margin="0,0,0,4" CornerRadius="8" Background="{ThemeResource TileBrush}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{x:Bind Name}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="in use" Visibility="{x:Bind InUseVisible, Mode=OneWay}" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="fastest" Visibility="{x:Bind FastestVisible, Mode=OneWay}" Foreground="#3DBE7A" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <TextBlock Text="{x:Bind Addresses}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Result, Mode=OneWay}" Foreground="{x:Bind ResultBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Style="{StaticResource GhostButton}" MinHeight="28" Width="28" Padding="0" Tag="{x:Bind}" Click="RemovePreset_Click"
+                                                Visibility="{x:Bind CanRemove}" ToolTipService.ToolTip="Remove">
+                                            <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="{ThemeResource TextMutedBrush}" />
+                                        </Button>
+                                        <Button Style="{StaticResource SecondaryButton}" MinHeight="28" Padding="12,0" Content="Use" Tag="{x:Bind}" Click="UsePreset_Click" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ================= SERVICES ================= -->
+            <Grid x:Name="PageServices" Visibility="Collapsed" Padding="16,0,16,0" RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /><RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="CAN I REACH…" Style="{StaticResource PanelHeader}" />
+                        <TextBlock x:Name="ServicesVia" Style="{StaticResource MutedText}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" x:Name="TestAllServices" Style="{StaticResource PrimaryButton}" MinHeight="30" Content="Test all" Click="TestAllServices_Click" />
+                </Grid>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="ServiceList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="m:ServiceRow">
+                                <Grid Height="48" Padding="12,0,8,0" ColumnSpacing="10" Margin="0,0,0,4" CornerRadius="8" Background="{ThemeResource TileBrush}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse Width="10" Height="10" Fill="{x:Bind Dot, Mode=OneWay}" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Name}" FontSize="13" />
+                                        <TextBlock Text="{x:Bind Host}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{x:Bind Result, Mode=OneWay}" Foreground="{x:Bind ResultBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                                    <Button Grid.Column="3" Style="{StaticResource GhostButton}" MinHeight="28" Padding="8,0" Content="Test" Tag="{x:Bind}" Click="TestService_Click" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- ================= LOOKUP ================= -->
+            <Grid x:Name="PageLookup" Visibility="Collapsed" Padding="16,0,16,0" RowSpacing="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBox x:Name="DomainBox" PlaceholderText="example.com" KeyDown="DomainBox_KeyDown" />
+                <Grid Grid.Row="1" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="90" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <ComboBox x:Name="TypeBox" HorizontalAlignment="Stretch" />
+                    <ComboBox x:Name="ViaBox" Grid.Column="1" HorizontalAlignment="Stretch" />
+                </Grid>
+                <Button Grid.Row="2" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Stretch" Content="Look up" Click="Lookup_Click" />
+                <StackPanel Grid.Row="3" Spacing="6">
+                    <TextBlock x:Name="LookupSummary" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                    <ItemsControl x:Name="AnswerList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="m:AnswerRow">
+                                <Grid Height="40" Padding="12,0" ColumnSpacing="10" Margin="0,0,0,4" CornerRadius="8" Background="{ThemeResource TileBrush}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="52" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="{x:Bind Type}" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Data}" FontSize="12" TextTrimming="CharacterEllipsis" IsTextSelectionEnabled="True" />
+                                        <TextBlock Text="{x:Bind Detail}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- One-line message bar -->
+        <Border x:Name="NoticeBar" Grid.Row="3" Visibility="Collapsed" Background="{ThemeResource AccentTintBrush}" Padding="16,9">
+            <TextBlock x:Name="NoticeText" TextWrapping="Wrap" />
+        </Border>
+    </Grid>
+</Window>
